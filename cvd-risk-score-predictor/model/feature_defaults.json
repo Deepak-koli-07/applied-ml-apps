@@ -1,0 +1,22 @@
+{
+  "Sex": "F",
+  "Age": 46.0,
+  "Weight (kg)": 86.61449999999999,
+  "Height (m)": 1.755,
+  "BMI": 28.159,
+  "Abdominal Circumference (cm)": 91.6,
+  "Blood Pressure (mmHg)": "113/77",
+  "Total Cholesterol (mg/dL)": 197.0,
+  "HDL (mg/dL)": 56.0,
+  "Fasting Blood Sugar (mg/dL)": 115.0,
+  "Smoking Status": "Y",
+  "Diabetes Status": "Y",
+  "Physical Activity Level": "High",
+  "Family History of CVD": "N",
+  "Height (cm)": 175.694,
+  "Waist-to-Height Ratio": 0.522,
+  "Systolic BP": 125.0,
+  "Diastolic BP": 82.0,
+  "Blood Pressure Category": "Hypertension Stage 2",
+  "Estimated LDL (mg/dL)": 109.0
+}

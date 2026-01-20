@@ -1,0 +1,22 @@
+[
+  "Sex",
+  "Age",
+  "Weight (kg)",
+  "Height (m)",
+  "BMI",
+  "Abdominal Circumference (cm)",
+  "Blood Pressure (mmHg)",
+  "Total Cholesterol (mg/dL)",
+  "HDL (mg/dL)",
+  "Fasting Blood Sugar (mg/dL)",
+  "Smoking Status",
+  "Diabetes Status",
+  "Physical Activity Level",
+  "Family History of CVD",
+  "Height (cm)",
+  "Waist-to-Height Ratio",
+  "Systolic BP",
+  "Diastolic BP",
+  "Blood Pressure Category",
+  "Estimated LDL (mg/dL)"
+]
