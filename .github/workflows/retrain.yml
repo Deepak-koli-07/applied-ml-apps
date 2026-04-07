@@ -1,0 +1,64 @@
+name: Daily AQI Retraining Pipeline
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # every day at 2am UTC (7:30am IST)
+  workflow_dispatch:       # manual Run button in GitHub UI for testing
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Step 1: Get the latest code from GitHub ──────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ── Step 2: Install Python ────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # ── Step 3: Install all packages from requirements.txt ───────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Step 4: Fetch new AQI data from data.gov.in API → save to Neon ──
+      - name: Fetch new AQI data
+        env:
+          DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+          DATA_GOV_API_KEY:  ${{ secrets.DATA_GOV_API_KEY }}
+        run: python src/fetch_data.py
+
+      # ── Step 5: Merge historical + new data, pivot to wide format ─────────
+      - name: Merge and preprocess
+        env:
+          DATABASE_URL:      ${{ secrets.DATABASE_URL }}
+        run: python src/merge_and_preprocess.py
+
+      # ── Step 6: Train 3 models, log params + fold scores to MLflow ───────
+      - name: Train models
+        env:
+          DATABASE_URL:          ${{ secrets.DATABASE_URL }}
+          DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
+          DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
+        run: python src/train.py
+
+      # ── Step 7: Compare challenger vs production model ────────────────────
+      - name: Evaluate models
+        env:
+          DATABASE_URL:          ${{ secrets.DATABASE_URL }}
+          DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
+          DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
+        run: python src/evaluate.py
+
+      # ── Step 8: Promote challenger to production if it beats current model
+      - name: Promote if better
+        env:
+          DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
+          DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
+        run: python src/promote.py
