@@ -22,6 +22,10 @@ def fetch_aqi_data():
     }
     response = requests.get(url, params=params)
     data = response.json()
+
+    if "records" not in data:
+        raise ValueError(f"API response missing 'records'. Status: {response.status_code}. Response: {data}")
+
     records = data["records"]
     df = pd.DataFrame(records)
     df["fetched_at"] = datetime.now()
