@@ -22,20 +22,20 @@ jobs:
 
       # ── Step 3: Install all packages from requirements.txt ───────────────
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r aqi-mlops/requirements.txt
 
       # ── Step 4: Fetch new AQI data from data.gov.in API → save to Neon ──
       - name: Fetch new AQI data
         env:
           DATABASE_URL:      ${{ secrets.DATABASE_URL }}
           DATA_GOV_API_KEY:  ${{ secrets.DATA_GOV_API_KEY }}
-        run: python src/fetch_data.py
+        run: python aqi-mlops/src/fetch_data.py
 
       # ── Step 5: Merge historical + new data, pivot to wide format ─────────
       - name: Merge and preprocess
         env:
           DATABASE_URL:      ${{ secrets.DATABASE_URL }}
-        run: python src/merge_and_preprocess.py
+        run: python aqi-mlops/src/merge_and_preprocess.py
 
       # ── Step 6: Train 3 models, log params + fold scores to MLflow ───────
       - name: Train models
@@ -44,7 +44,7 @@ jobs:
           DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
           DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
-        run: python src/train.py
+        run: python aqi-mlops/src/train.py
 
       # ── Step 7: Compare challenger vs production model ────────────────────
       - name: Evaluate models
@@ -53,7 +53,7 @@ jobs:
           DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
           DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
-        run: python src/evaluate.py
+        run: python aqi-mlops/src/evaluate.py
 
       # ── Step 8: Promote challenger to production if it beats current model
       - name: Promote if better
@@ -61,4 +61,4 @@ jobs:
           DAGSHUB_USERNAME:      ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
           DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
-        run: python src/promote.py
+        run: python aqi-mlops/src/promote.py
