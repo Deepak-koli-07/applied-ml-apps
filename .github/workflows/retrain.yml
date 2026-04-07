@@ -1,5 +1,43 @@
 name: Daily AQI Retraining Pipeline
 
+# ── What this workflow does ───────────────────────────────────────────────────
+# Every day at 2am UTC (7:30am IST) this pipeline:
+#   1. Fetches fresh AQI data from data.gov.in API → saves to Neon (cloud Postgres)
+#   2. Merges historical + new data, pivots to wide ML format
+#   3. Trains 3 models (Ridge, RandomForest, XGBoost) and logs to MLflow on Dagshub
+#   4. Evaluates challenger vs current production model on held-out test set
+#   5. Promotes challenger to @production alias in MLflow registry if it is better
+#   6. Restarts the Hugging Face Space so users see the updated model immediately
+#
+# ── Why each secret is needed ─────────────────────────────────────────────────
+#
+#   DATABASE_URL       → connects to Neon (cloud Postgres) to read/write AQI data
+#                        GitHub Actions runs on a fresh machine every time — it has
+#                        no local database, so we need a cloud DB that persists
+#
+#   DATA_GOV_API_KEY   → authenticates requests to data.gov.in AQI API
+#                        without this the API returns empty or 403 responses
+#
+#   DAGSHUB_USERNAME   → your Dagshub account name
+#   DAGSHUB_TOKEN      → your Dagshub API token (acts as MLflow password)
+#   DAGSHUB_TRACKING_URI → full URL of your MLflow tracking server on Dagshub
+#                        these three together let train/evaluate/promote scripts
+#                        log experiments and manage the model registry on Dagshub
+#                        (Dagshub hosts MLflow for free — it is our model store)
+#
+#   HF_TOKEN           → Hugging Face write token — used ONLY in the final step
+#                        to call the HF API and restart the Space
+#                        the Space itself needs no GitHub token — it talks to
+#                        Dagshub/MLflow directly using its own secrets (set in
+#                        HF Space settings, not here)
+#
+# ── Summary of why HF only needs its own token here ─────────────────────────
+#   HF Space has Dagshub secrets stored in its own settings → it loads the model
+#   directly from MLflow on startup. GitHub Actions does NOT push any model files
+#   to HF. It only sends one restart signal via HF_TOKEN. That is the only bridge
+#   between GitHub and Hugging Face.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   schedule:
     - cron: "0 2 * * *"   # every day at 2am UTC (7:30am IST)
@@ -62,3 +100,15 @@ jobs:
           DAGSHUB_TOKEN:         ${{ secrets.DAGSHUB_TOKEN }}
           DAGSHUB_TRACKING_URI:  ${{ secrets.DAGSHUB_TRACKING_URI }}
         run: python aqi-mlops/src/promote.py
+
+      # ── Step 9: Restart HF Space so it reloads the new @production model ─
+      # Why restart? The Streamlit app caches the model in memory on startup.
+      # A restart forces it to call MLflow again and load the newly promoted model.
+      # HF_TOKEN is a Hugging Face write token — it has permission to restart Spaces.
+      # We do NOT push any files here — just a single API call to trigger a restart.
+      - name: Restart Hugging Face Space
+        run: |
+          curl -s -o /dev/null -w "HF restart HTTP status: %{http_code}\n" \
+            -X POST \
+            "https://huggingface.co/api/spaces/BlueNeuron/delhi-aqi-pm25/restart" \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}"
