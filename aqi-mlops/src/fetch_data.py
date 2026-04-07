@@ -21,10 +21,17 @@ def fetch_aqi_data():
         "filters[city]": "Delhi"
     }
     response = requests.get(url, params=params)
+
+    print(f"API status code : {response.status_code}")
+    print(f"API response    : {response.text[:500]}")
+
+    if response.status_code != 200 or not response.text.strip():
+        raise ValueError(f"API returned empty or error response. Status: {response.status_code}. Body: {response.text[:500]}")
+
     data = response.json()
 
     if "records" not in data:
-        raise ValueError(f"API response missing 'records'. Status: {response.status_code}. Response: {data}")
+        raise ValueError(f"API response missing 'records'. Response: {data}")
 
     records = data["records"]
     df = pd.DataFrame(records)
